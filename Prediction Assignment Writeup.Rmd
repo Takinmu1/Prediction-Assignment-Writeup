@@ -1,0 +1,97 @@
+---
+title: "Prediction Assignment Writeup"
+author: "Tobi Akinmusuru"
+date: "4/19/2022"
+output: html_document
+---
+
+
+## Methods
+
+The purpose of this memorandum is to predict the manner in which an individual performed Bicep curls with a dumbells based on data recorded by an accelerometer.  The classe factor variable is our outcome or dependent variable.  The subjects in the study performed Bicep curls in five different manners.  
+
+A. With proper technique
+B. Throwing their elbows in front 
+C. Lifting the Dumbell halfway up
+D. Lowering the Dumbell only halfway
+E. Throwing their hips to the front
+
+## Cross-validation
+
+Cross validation of the model will be performed by using the training set to build the model and the testing set of the data to test the model.  After we load the data, we clean the data by removing all NAs and filtering  the data.
+
+```{r, echo=FALSE}
+set.seed(1234)
+pml_training <- read.csv("C:/Users/takin/Downloads/pml-training.csv", na.strings=c("NA","#DIV/0!", ""))
+pml_testing <- read.csv("C:/Users/takin/Downloads/pml-testing.csv", na.strings=c("NA","#DIV/0!", ""))
+library(lattice); library(ggplot2); library(caret); library(randomForest); library(rpart); library(rpart.plot);
+
+pml_training <-pml_training[,colSums(is.na(pml_training)) == 0]
+pml_testing <-pml_testing[,colSums(is.na(pml_testing)) == 0]
+pml_training   <-pml_training[,-c(1:7)]
+pml_testing <-pml_testing[,-c(1:7)]
+
+
+trainpml_training <- createDataPartition(y=pml_training$classe, p=0.75, list=FALSE)
+pml_trainingTrainingSet <- pml_training[trainpml_training, ] 
+pml_trainingTestTrainingSet <- pml_training[-trainpml_training, ]
+
+
+colnames(pml_training)
+summary(pml_training)
+colnames(pml_testing)
+summary(pml_testing)
+```
+
+
+The following graph shows the frequency of each manner of Bicep curl in the training set.
+
+```{r}
+traingsetfactor<-as.factor(pml_training$classe)
+barplot(table(traingsetfactor), col="blue", main="Frequency of Classe within the Training Set", xlab="Classe", ylab="Frequency" )
+```
+
+The graph shows that using the proper technique is the most frequent and lowering the dumbell halfway is the least frequent.  Now we will use different prediction models to test the data.
+
+## Random Forest
+
+The first prediction model that will be used to test the training set is Random Forest. 
+
+```{r}
+
+pml_trainingTrainingSet$classe = factor(pml_trainingTrainingSet$classe)
+pml_trainingTestTrainingSet$classe = factor(pml_trainingTestTrainingSet$classe)
+modelRF <- randomForest(classe ~., data=pml_trainingTrainingSet, method="class")
+predictionRF <- predict(modelRF, pml_trainingTestTrainingSet, type = "class")
+
+confusionMatrix(predictionRF, pml_trainingTestTrainingSet$classe)
+
+```
+
+## Decision Tree
+
+Now the Decision Tree will be used to predict the second model
+
+```{r}
+modelDT <- rpart(classe ~ ., data=pml_trainingTrainingSet, method="class")
+
+predictionDT <- predict(modelDT, pml_trainingTestTrainingSet, type = "class")
+
+# Plot the Decision Tree
+rpart.plot(modelDT, main="Classification Tree", extra=102, under=TRUE, faclen=0)
+confusionMatrix(predictionDT, pml_trainingTestTrainingSet$classe)
+```
+
+
+## Accuracy
+
+The rabdom forest model has an accuracy or 0.9953 and the decision tree model has an accuracy of 0.7455.  This means that the random forest model is a better model to use.  
+
+##  Predicting 20 Outcomes
+
+20 outcomes can be predicted as follows
+```{r}
+predictionfinal <- predict(modelRF, pml_testing , type="class")
+predictionfinal
+```
+
